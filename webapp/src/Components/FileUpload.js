@@ -2,6 +2,7 @@ import React from 'react'
 import axios, { post } from 'axios';
 import AuthService from "../services/auth.service";
 
+
 const currentUser = AuthService.getCurrentUser();
 console.log(currentUser)
 class FileUpload extends React.Component {
@@ -12,7 +13,6 @@ class FileUpload extends React.Component {
       file:null,
       category: null,
       username:null,
-      currency:null,
   data: {
     bill_value: '',
     total_value: '',
@@ -43,7 +43,7 @@ setData:false
 
   showResponseData(data){ 
   this.setState({
-    setData: !this.state.setData
+    setData: true
     });
   }
 
@@ -59,9 +59,9 @@ setData:false
               
             if (!allowedExtensions.exec(filePath)) {
                 alert('Invalid file type. Please upload a PDF or IMAGE file.');
-                //this.setState({e:null})
-                //console.log(this.state.file)
-                //this.setState({file : this.state.file})
+                //this.setState({})
+                //console.log()
+                //this.setState({ file : null})
                // return false;
                //e.target.reset;
             } else{
@@ -89,7 +89,6 @@ setData:false
     console.log(this.state.category)
     console.log(this.state.currency)
     formData.append('category',this.state.category)
-    formData.append('currency', this.state.currency)
     formData.append('username', currentUser.username)
    
     console.log(...formData)
@@ -108,11 +107,7 @@ setData:false
         <h1>File Upload</h1>
         <div>
         <input type="file" onChange={this.onChange} required/>
-        </div>
-      
-
-
-        <div>
+        
               <select id="2" value={this.state.category} onChange={this.onCategoryChange}  defaultValue={'DEFAULT'} required> 
                 <option value="DEFAULT" disabled>Choose category</option>
                 <option name="Miscellaneous"> Miscellaneous</option>
@@ -140,14 +135,10 @@ setData:false
         <input type="radio" value="Female" name="gender" /> Female
         <input type="radio" value="Other" name="gender" /> Other
       </div> */}
-        </div>
+        
        
        
-
-        
-        
-
-        <div>
+      <span> </span> <span> </span> 
         <button type="submit">Upload</button>
         </div>
         
@@ -157,12 +148,20 @@ setData:false
            {this.state.data.bill_value !== "" ? ( <p> Bill Value: {this.state.data.bill_value}</p> ) : <p> Bill Value: - </p> }
            {this.state.data.total_value !== "" ? ( <p>Monthly Expense: {this.state.data.total_value}</p>) : <p> Monthly Expense: - </p> }
            {this.state.data.category !== "" ? ( <p>Category: {this.state.data.category}</p>) : <p> Category: - </p> }
-         </div>
-            
+         {/* </div> */}
+          
+          {/* <div> */}
+          {/* <p>To view list of expenses uploaded for current month.</p>
+          <ul>
+              <li><Link to="/profile">PDF Links</Link></li>
+          </ul> */}
+      </div>
           ): null }
 
 
       </form>
+
+
    )
   }
 }

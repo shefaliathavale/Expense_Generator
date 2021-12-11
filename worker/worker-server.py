@@ -35,7 +35,7 @@ toWorkerResult = rabbitMQChannel.queue_declare(queue='toWorkerQueue')
 credential_path = "keyFile-credentials.json"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credential_path
 
-'''
+
 def enqueueDataToLogsExchange(message,messageType):
     rabbitMQ = pika.BlockingConnection(
             pika.ConnectionParameters(host=rabbitMQHost))
@@ -59,7 +59,6 @@ def enqueueDataToLogsExchange(message,messageType):
     rabbitMQChannel.close()
     rabbitMQ.close()
 
-'''
 
 def callback(ch, method, properties, body):
     print(f" [x] {method.routing_key}:{body}", file=sys.stdout, flush=True)
@@ -70,6 +69,8 @@ def callback(ch, method, properties, body):
     user_details = queuedata['user_details']
     category = queuedata['category']
     print(timestamp,user_details,category)
+    enqueueDataToLogsExchange('Worker processing sentences','info')
+
     gcs_source_uri = 'gs://projectexpensegenerator/'+str(user_details)+'_'+str(timestamp)+'.pdf'
     gcs_destination_uri = 'gs://projectexpensegeneratorjson/'+str(user_details)+'_'+str(timestamp)
     print(gcs_source_uri,gcs_destination_uri)
@@ -122,7 +123,7 @@ def json_to_text(gcs_destination_uri):
             file.write(annotation['text'])
         str1 = repr(annotation['text'])
         m = str1.split('\\n')
-        str2 = ["total","balance","amount"]
+        str2 = ["total","amount"]
         dict1 = {}
         c = 0
         for i in range(len(m)):

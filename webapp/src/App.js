@@ -1,37 +1,17 @@
-//import logo from './logo.svg';
-// import React from 'react';
-// import Routes from './Routes';
-// import "bootstrap/dist/css/bootstrap.min.css";
-
-// function App() {
-//   return (
-//     <div className="App">
-//       <Routes/>
-//     </div>
-//   );
-// }
-
-// export default App;
-
 import React, { useState, useEffect } from "react";
 import { Switch, Route, Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
-
 import AuthService from "./services/auth.service";
-
 import Login from "./Components/Login";
 import Register from "./Components/Register";
 import Home from "./Components/Home";
-import Profile from "./Components/Profile";
-import BoardUser from "./Components/BoardUser";
-import BoardModerator from "./Components/BoardModerator";
-import BoardAdmin from "./Components/BoardAdmin";
+import ExpenseDisplay from "./Components/ExpenseDisplay";
 import FileUpload from "./Components/FileUpload";
 
 const App = () => {
-  const [showModeratorBoard, setShowModeratorBoard] = useState(false);
-  const [showAdminBoard, setShowAdminBoard] = useState(false);
+  // const [showModeratorBoard, setShowModeratorBoard] = useState(false);
+  // const [showAdminBoard, setShowAdminBoard] = useState(false);
   const [currentUser, setCurrentUser] = useState(undefined);
 
   useEffect(() => {
@@ -90,8 +70,8 @@ const App = () => {
         {currentUser ? (
           <div className="navbar-nav ml-auto">
             <li className="nav-item">
-              <Link to={"/profile"} className="nav-link">
-                {currentUser.username}
+              <Link to={"/fileupload"} className="nav-link">
+                File Upload
               </Link>
             </li>
             <li className="nav-item">
@@ -122,11 +102,11 @@ const App = () => {
           <Route exact path={["/", "/home"]} component={Home} />
           <Route exact path="/login" component={Login} />
           <Route exact path="/register" component={Register} />
-          <Route exact path="/profile" component={Profile} />
           <Route exact path="/fileupload" component={FileUpload} />
-          <Route path="/user" component={BoardUser} />
+          <Route exact path="/expensedisplay" component={ExpenseDisplay} />
+          {/* <Route path="/user" component={BoardUser} />
           <Route path="/mod" component={BoardModerator} />
-          <Route path="/admin" component={BoardAdmin} />
+          <Route path="/admin" component={BoardAdmin} /> */}
         </Switch>
       </div>
     </div>

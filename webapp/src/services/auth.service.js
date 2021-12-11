@@ -10,6 +10,7 @@ const register = (username, email, password) => {
   });
 };
 
+
 const login = (username, password) => {
   return axios
     .post(API_URL + "signin", {
@@ -28,6 +29,26 @@ const login = (username, password) => {
     });
 };
 
+const getexpenses = (username, month, category) => {
+  return axios
+    .post(API_URL + "getexpenses", {
+      username,
+      month,
+      category
+    })
+    .then((response) => {
+      const pdflist = response.data
+      console.log(response.data)
+      // if (response.data.accessToken) {
+      //   localStorage.setItem("user", JSON.stringify(users));
+      //   console.log('users', users)
+      // }
+
+      return response.data;
+    });
+};
+
+
 const logout = () => {
   localStorage.removeItem("user");
 };
@@ -41,4 +62,5 @@ export default {
   login,
   logout,
   getCurrentUser,
+  getexpenses
 };

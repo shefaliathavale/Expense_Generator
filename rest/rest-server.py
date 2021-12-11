@@ -63,7 +63,7 @@ def insert_customer(customer_data):
     print("done session")
 
   except Exception as e:
-    #enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
+    enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
     print("Exception occured" + str(e))
   return customer_data
 
@@ -98,37 +98,38 @@ def search_customer(customer_data):
          return msg
          
   except Exception as e:
-    #enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
+    enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
     print("Exception occured" + str(e))
 
 
-def insert_expense(user_details,timestamp,billvalue,category,totalvalue):
-    query = session.prepare('INSERT INTO expense(email,timestamp, bill_value, category, final_value)'
-                            'VALUES (?, ?, ?, ?, ?)'
+def insert_expense(user_details,timestamp,billvalue,category,totalvalue,month):
+    query = session.prepare('INSERT INTO expense(email,timestamp, bill_value, category,final_value,month)'
+                            'VALUES (?, ?, ?, ?, ?, ?)'
                            'IF NOT EXISTS')
-    results = session.execute(query, [user_details,timestamp,billvalue,category,totalvalue])
+    results = session.execute(query, [user_details,timestamp,billvalue,category,totalvalue,month])
+    print('Insert worked!')
 
 
-def final_value(user_details,timestamp,billvalue,category):
+def final_value(user_details,timestamp,billvalue,category,month):
+    totalvalue = 0
+    print('It works!')
     df = pd.DataFrame()
-    query = "select final_value from expense limit 1 allow filtering;"
+    query = "select final_value from expense where email='"+str(user_details)+ "' limit 1 allow filtering;"
     rows = session.execute(query)
-    df = df.append(pd.DataFrame(rows,index=[0]))   
-    totalvalue = str(df['final_value'])
-    totalvalue = totalvalue[1:].strip().split('\n')[0]
+    df = df.append(pd.DataFrame(rows,index=[0]))
     try:
         float(billvalue)
         if(df.empty==True):
             totalvalue = float(billvalue)
             print(totalvalue)
-            insert_expense(user_details,timestamp,billvalue,category,str(totalvalue))
+            insert_expense(user_details,str(timestamp),billvalue,category,str(totalvalue),str(month))
             print("If no prev entry for email works!")    
         else:
             totalvalue = str(df['final_value'])
             totalvalue = totalvalue[1:].strip().split('\n')[0]
             print("Total of previous is:" + totalvalue)
             totalvalue = float(billvalue) + float(totalvalue)                                          
-            insert_expense(user_details,timestamp,billvalue,category,str(totalvalue))
+            insert_expense(user_details,str(timestamp),billvalue,category,str(totalvalue),str(month))
             print("Prev entry for email works!")  
     except:
         billvalue = ''
@@ -139,8 +140,77 @@ def final_value(user_details,timestamp,billvalue,category):
             totalvalue = ''
     return str(totalvalue)
 
+def get_timestamp(email,month):
+    try:
+        session = cluster.connect('test1')
+        msg =''
+        print(email, month)
+        query = "select timestamp from expense where email='"+str(email)+"' and month='"+str(month)+"'ALLOW FILTERING;"
+        df = pd.DataFrame()
+        timestamps = []
+        for row in session.execute(query):
+            df = df.append(pd.DataFrame(row,index=[0]))
+        df.columns=['timestamp']
+        timestamps = df['timestamp'].to_list()
+        print(timestamps)
+        return timestamps
+    except Exception as e: 
+        enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
+        print("Exception occured " + str(e))
 
-    
+def search_expenses(email,month,category):
+  try:
+    session = cluster.connect('test1')
+    print(email , category, month)
+    query = "select bill_value from expense where email='"+ str(email) + "' and category='" + str(category)+ "' and month='" + str(month)+ "' ALLOW FILTERING;"
+    #print(query)
+    df = pd.DataFrame()
+    setfinal = []
+    for row in session.execute(query):
+        df = df.append(pd.DataFrame(row,index=[0]))
+    if(df.empty!=True):
+        df.columns=['bill_value']
+        setfinal = df['bill_value'].to_list()
+        #print(setfinal,type(setfinal))
+        sum = 0
+        for i in setfinal:
+            sum+=float(i)
+        print('Sum acc to category is: ',sum)
+        return str(sum)
+    else:
+        return "N/A"
+        
+  except Exception as e:
+    enqueueDataToLogsExchange("Exception occured" + str(e),"debug")
+    print("Exception occured " + str(e))
+
+
+
+def enqueueDataToLogsExchange(message,messageType):
+    rabbitMQ = pika.BlockingConnection(
+            pika.ConnectionParameters(host=rabbitMQHost))
+    rabbitMQChannel = rabbitMQ.channel()
+
+    rabbitMQChannel.exchange_declare(exchange='logs', exchange_type='topic')
+
+    infoKey = f"{platform.node()}.rest.info"
+    debugKey = f"{platform.node()}.rest.debug"
+
+    if messageType == "info":
+        key = infoKey
+    elif messageType == "debug":
+        key = debugKey
+
+    rabbitMQChannel.basic_publish(
+        exchange='logs', routing_key='logs', body=json.dumps(message))
+
+    print(" [x] Sent %r:%r" % (key, message))
+
+    rabbitMQChannel.close()
+    rabbitMQ.close()
+
+
+
 class enqueueWorker(object):
     def __init__(self):
         self.connection = pika.BlockingConnection(
@@ -183,11 +253,13 @@ def signup():
         data = request.get_json()
         print("-------Data-------" + str(data))
         response = insert_customer(data)
+        enqueueDataToLogsExchange('Call to api /api/auth/signup','info')
+
         # enqueueDataToLogsExchange('Fetch prices api executed succesfully',"info")
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
         
     except Exception as e:
-        #enqueueDataToLogsExchange('Error occured in api /api/auth/signup','info')
+        enqueueDataToLogsExchange('Error occured in api /api/auth/signup','info')
         return Response(response="Something went wrong!", status=500, mimetype="application/json")
 
 
@@ -199,6 +271,8 @@ def signin():
         print("-------Data-------" + str(data))
         email = request.json.get("username",None)
         password = request.json.get("password",None)
+        enqueueDataToLogsExchange('Call to api /api/auth/signin','info')
+
         #calling db function
         response = search_customer(data)
         #print(response)    
@@ -214,7 +288,7 @@ def signin():
         #return make_response(jsonify(response=response), 201)
         
     except Exception as e:
-        #enqueueDataToLogsExchange('Error occured in api /api/auth/signin','info')
+        enqueueDataToLogsExchange('Error occured in api /api/auth/signin','info')
         return Response(response="Something went wrong!", status=500, mimetype="application/json")
 
 
@@ -226,6 +300,10 @@ def handle_form():
         user_details = request.form['username']
         print(user_details)
         timestamp = str(datetime.utcnow())
+        m = datetime.utcnow().date()
+        month = str(m)
+        month = month.split('-')[1]
+        enqueueDataToLogsExchange('Call to api /api/upload','info')
         print("Posted file: {}".format(request.files['file']))
         file1 = request.files['file'].read()
         print(type(file1))
@@ -272,14 +350,54 @@ def handle_form():
         response1 = dataToWorker.enqueueDataToWorker(data)
         print(response1)
         billvalue = re.sub('[^\d\.]', '',response1)
-        total_value = final_value(user_details,timestamp,billvalue,category)
+        total_value = final_value(user_details,timestamp,billvalue,category,month)
         response = {'category':category,'bill_value':str(billvalue),'total_value':str(total_value)}
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
 
     except Exception as e:
         print("Something went wrong" + str(e))
-    #     enqueueDataToLogsExchange('Error occured in api /apiv1/analyze','info')
+        enqueueDataToLogsExchange('Error occured in api /api/upload','info')
         return Response(response="Something went wrong!", status=500, mimetype="application/json")
+
+
+@app.route('/api/auth/getpdf', methods=['POST'])
+def get_pdf():
+    data = request.get_json()
+    print("-------Data-------" + str(data))
+    email = request.json.get("username",None)
+    month = request.json.get("month",None)
+    #response = search_(category,username)
+    #response1 = 565
+    #total_value = ''
+    response = {'month':str(month),'email':str(email)}
+    timestamps = []
+    timestamps = get_timestamp(email,month)
+    print(timestamps)
+    #insert_expense(user_details,category,timestamp,response1)
+    
+    return Response(response=json.dumps(response), status=200, mimetype="application/json")
+    #return ""
+
+
+@app.route('/api/auth/getexpenses', methods=['POST'])
+def get_expenses():
+    data = request.get_json()
+    print("-------Data-------" + str(data))
+    email = request.json.get("username",None)
+    month = request.json.get("month",None)
+    category = request.json.get("category",None)
+    enqueueDataToLogsExchange('Call to api /api/auth/getexpenses','info')
+
+    response = search_expenses(email,month,category)
+    #response1 = 565
+    #total_value = ''
+
+    #response = {'month':str(month),'email':str(email),'category':category}
+    #insert_expense(user_details,category,timestamp,response1)
+    
+    return Response(response=json.dumps(response), status=200, mimetype="application/json")
+    #return ""
+
 
 
 # start flask app
